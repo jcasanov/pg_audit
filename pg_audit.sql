@@ -15,11 +15,11 @@ CREATE TABLE audit_log (
 /*
  * To use create a trigger in this way:
  * CREATE TRIGGER trigger_name AFTER INSERT OR UPDATE OR DELETE
- *        ON table_name FOR EACH ROW EXECUTE logger();
+ *        ON table_name FOR EACH ROW EXECUTE PROCEDURE logger();
  *
  * To track TRUNCATE events you can also create a trigger as:
  * CREATE TRIGGER trigger_name AFTER TRUNCATE
- *        ON table_name FOR EACH STATEMENT EXECUTE logger();
+ *        ON table_name FOR EACH STATEMENT EXECUTE PROCEDURE logger();
  */
 CREATE OR REPLACE FUNCTION logger() RETURNS trigger AS $$
 DECLARE 
