@@ -58,3 +58,29 @@ BEGIN
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+CREATE OR REPLACE FUNCTION install_logger(schema_name text, table_name text, log_truncate boolean default false) RETURNS boolean AS $$
+DECLARE
+	fq_table_name text = NULL;
+BEGIN
+	SELECT schema_name || '.' || table_name INTO fq_table_name; 
+
+	-- check if the table exists and if it doesn't get an error
+	EXECUTE 'SELECT ' || quote_literal(fq_table_name) || '::regclass';
+
+	-- drop the trigger if it  already exists and re-create it
+	-- this is easier than checking pg_triggers to see if the trigger exists
+	EXECUTE 'DROP TRIGGER IF EXISTS auditing_mod_actions ON ' || fq_table_name;
+	EXECUTE 'CREATE TRIGGER auditing_mod_actions AFTER INSERT OR UPDATE OR DELETE ' ||
+			' ON ' || fq_table_name || ' FOR EACH ROW EXECUTE PROCEDURE logger();';
+	
+	IF (log_truncate) THEN
+		EXECUTE 'DROP TRIGGER IF EXISTS auditing_truncate_actions ON ' || fq_table_name;
+		EXECUTE 'CREATE TRIGGER auditing_truncate_actions AFTER TRUNCATE ' ||
+				' ON ' || fq_table_name || ' FOR EACH STATEMENT EXECUTE PROCEDURE logger();';
+	END IF;
+
+	RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER STRICT;
