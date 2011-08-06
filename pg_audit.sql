@@ -44,16 +44,12 @@ BEGIN
 		SELECT hstore(old.*) INTO hs_old;
 	END IF;
 
-	CREATE TEMP TABLE t_old ON COMMIT DROP AS SELECT * FROM each(hs_old);
-	CREATE TEMP TABLE t_new ON COMMIT DROP AS SELECT * FROM each(hs_new);
-
-	INSERT INTO audit_log(log_relid, log_client_addr, log_operation, log_old_values, log_new_values) 
-	VALUES (TG_RELID, inet_client_addr(), TG_OP, 
-			(SELECT hstore(array_agg(key), array_agg(value)) FROM t_old WHERE (key, value) NOT IN (SELECT key, value FROM t_new)),
-			(SELECT hstore(array_agg(key), array_agg(value)) FROM t_new WHERE (key, value) NOT IN (SELECT key, value FROM t_old)));
-
-	DROP TABLE t_old;
-	DROP TABLE t_new;
+	INSERT INTO audit_log.audit_log(log_relid, log_client_addr, log_operation, log_old_values, log_new_values) 
+	WITH t_old(key, value) as (SELECT * FROM each(hs_old)),
+	     t_new(key, value) as (SELECT * FROM each(hs_new))
+	SELECT TG_RELID, inet_client_addr(), TG_OP, 
+		(SELECT hstore(array_agg(key), array_agg(value)) FROM t_old WHERE (key, value) NOT IN (SELECT key, value FROM t_new)),
+		(SELECT hstore(array_agg(key), array_agg(value)) FROM t_new WHERE (key, value) NOT IN (SELECT key, value FROM t_old));
 
 	RETURN NULL;
 END;
